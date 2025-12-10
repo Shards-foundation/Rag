@@ -12,7 +12,7 @@
     },
     "lint": {},
     "test": {},
-    "db:push": {
+    "db:init": {
       "cache": false
     }
   }

@@ -13,13 +13,25 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const hasClerkKey = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (hasClerkKey) {
+    return (
+      <ClerkProvider>
+        <html lang="en">
+          <body>
+            <TrpcProvider children={children} />
+          </body>
+        </html>
+      </ClerkProvider>
+    );
+  }
+
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>
-          <TrpcProvider children={children} />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en">
+      <body>
+        <TrpcProvider children={children} />
+      </body>
+    </html>
   );
 }

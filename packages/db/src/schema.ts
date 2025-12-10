@@ -1,4 +1,4 @@
-// Domain types for the main entities
+// Domain types for DB entities
 
 export type Organization = {
   id: string;
@@ -64,8 +64,6 @@ export type DocumentChunk = {
   createdAt: Date;
 };
 
-export type MessageRole = "USER" | "ASSISTANT";
-
 export type ChatSession = {
   id: string;
   organizationId: string;
@@ -74,6 +72,8 @@ export type ChatSession = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type MessageRole = "USER" | "ASSISTANT";
 
 export type Message = {
   id: string;
@@ -88,6 +88,6 @@ export type AuditEvent = {
   organizationId: string;
   userId: string | null;
   type: string;
-  metadata: unknown | null;
+  metadata: any;
   createdAt: Date;
 };

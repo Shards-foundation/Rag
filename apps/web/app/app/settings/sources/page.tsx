@@ -1,7 +1,7 @@
 'use client';
-import { trpc } from "../../../../lib/trpc";
-import React, { useState } from "react";
-import { FileText, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { trpc } from "../../../../../lib/trpc";
+import React from "react";
+import { UploadCloud, CheckCircle, Loader2, AlertCircle, FileText } from "lucide-react";
 
 export default function SourcesPage() {
   const utils = trpc.useContext();
@@ -33,32 +33,33 @@ export default function SourcesPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto w-full">
-      <h1 className="text-3xl font-bold mb-6">Data Sources</h1>
+      <h1 className="text-3xl font-bold mb-8">Data Sources</h1>
       
-      {/* Upload Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="p-6 bg-slate-900 rounded-xl border border-slate-800 hover:border-blue-500/50 transition">
-          <h3 className="font-bold mb-2 text-lg">Manual Upload</h3>
-          <p className="text-sm text-slate-400 mb-6">Upload PDF, TXT, MD files directly.</p>
-          <label className={`block w-full text-center py-2.5 rounded-lg cursor-pointer font-medium transition ${upload.isLoading ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
-            {upload.isLoading ? (
-                <span className="flex items-center justify-center gap-2"><Loader2 size={16} className="animate-spin"/> Uploading...</span>
-            ) : 'Choose File'}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+              <UploadCloud size={24} />
+            </div>
+            <h3 className="font-bold text-lg">Manual Upload</h3>
+          </div>
+          <p className="text-sm text-slate-400 mb-6">Upload PDF, TXT, MD files.</p>
+          <label className={`block w-full text-center py-2 rounded-lg cursor-pointer font-medium transition ${upload.isLoading ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+            {upload.isLoading ? 'Uploading...' : 'Choose File'}
             <input type="file" onChange={handleFile} disabled={upload.isLoading} className="hidden"/>
           </label>
         </div>
         
         {['Google Drive', 'Slack'].map(name => (
           <div key={name} className="p-6 bg-slate-900/50 rounded-xl border border-slate-800 opacity-60">
-            <h3 className="font-bold mb-2 text-lg">{name}</h3>
-            <p className="text-sm text-slate-500 mb-6">Connect workspace</p>
-            <button disabled className="w-full py-2.5 bg-slate-800 rounded-lg text-slate-500 text-sm font-medium cursor-not-allowed">Coming Soon</button>
+            <h3 className="font-bold text-lg mb-2">{name}</h3>
+            <p className="text-sm text-slate-500 mb-4">Connect workspace</p>
+            <button disabled className="w-full py-2 bg-slate-800 rounded-lg text-slate-500 text-sm font-medium cursor-not-allowed">Coming Soon</button>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Active Sources Table */}
           <div className="space-y-4">
               <h2 className="text-xl font-bold">Connected Sources</h2>
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -73,30 +74,22 @@ export default function SourcesPage() {
                       <tbody className="divide-y divide-slate-800">
                           {sources.data?.map((s: any) => (
                               <tr key={s.id} className="hover:bg-slate-800/50 transition">
-                                  <td className="p-4 font-medium">
-                                      {s.displayName}
-                                      <div className="text-xs text-slate-500 font-normal">{s.type}</div>
-                                  </td>
+                                  <td className="p-4 font-medium">{s.displayName}</td>
                                   <td className="p-4">
                                       <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${
                                           s.status === 'ACTIVE' ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'
                                       }`}>
-                                          <div className={`w-1.5 h-1.5 rounded-full ${s.status === 'ACTIVE' ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
                                           {s.status}
                                       </span>
                                   </td>
                                   <td className="p-4 text-right text-slate-300 font-mono">{s._count.documents}</td>
                               </tr>
                           ))}
-                          {sources.data?.length === 0 && (
-                              <tr><td colSpan={3} className="p-6 text-center text-slate-500 text-sm">No sources connected</td></tr>
-                          )}
                       </tbody>
                   </table>
               </div>
           </div>
 
-          {/* Recent Documents Table */}
           <div className="space-y-4">
               <h2 className="text-xl font-bold">Recent Documents</h2>
               <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
@@ -118,7 +111,6 @@ export default function SourcesPage() {
                                           </div>
                                           <div className="overflow-hidden">
                                               <div className="font-medium truncate max-w-[150px]" title={d.title}>{d.title}</div>
-                                              <div className="text-xs text-slate-500 truncate">{d.sourceName}</div>
                                           </div>
                                       </div>
                                   </td>
@@ -132,9 +124,6 @@ export default function SourcesPage() {
                                   </td>
                               </tr>
                           ))}
-                          {documents.data?.length === 0 && (
-                              <tr><td colSpan={3} className="p-6 text-center text-slate-500 text-sm">No documents found</td></tr>
-                          )}
                       </tbody>
                   </table>
               </div>

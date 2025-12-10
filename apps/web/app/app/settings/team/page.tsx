@@ -1,6 +1,6 @@
 'use client';
 import { trpc } from "../../../../../lib/trpc";
-import { UserPlus, Shield, User as UserIcon } from "lucide-react";
+import { UserPlus, Shield, User as UserIcon, Users } from "lucide-react";
 
 export default function TeamPage() {
   const members = trpc.team.list.useQuery();
@@ -10,7 +10,7 @@ export default function TeamPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Team Members</h1>
         <button 
-          onClick={() => alert("Invite feature coming soon (requires SMTP setup)")}
+          onClick={() => alert("Invite feature coming soon")}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-semibold transition"
         >
           <UserPlus size={16} />
@@ -51,9 +51,6 @@ export default function TeamPage() {
                 </td>
               </tr>
             ))}
-            {members.data?.length === 0 && (
-               <tr><td colSpan={4} className="p-8 text-center text-slate-500">No members found</td></tr>
-            )}
           </tbody>
         </table>
       </div>

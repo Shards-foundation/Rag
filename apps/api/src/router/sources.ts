@@ -1,17 +1,18 @@
 import { Queue } from "bullmq";
 import { env } from "@lumina/config";
 import { z } from "zod";
-import { query, DataSource, Document } from "@lumina/db";
+import { query, createDataSource, createDocument, createAuditEvent, DataSource, Document } from "@lumina/db";
 import { randomUUID } from "crypto";
+import { TRPCError } from "@trpc/server";
 
-// Job Queue
 const ingestionQueue = new Queue("ingestion", {
   connection: { url: env.REDIS_URL }
 });
 
+const MAX_FILE_SIZE_B = 10 * 1024 * 1024; // 10MB
+
 export const sourcesRouter = (t: any, protectedProcedure: any) => t.router({
   list: protectedProcedure.query(async ({ ctx }: any) => {
-    // Count documents per source using correlated subquery or group by
     const sql = `
       SELECT ds.*, 
       (SELECT COUNT(*) FROM "Document" d WHERE d."dataSourceId" = ds.id) as "docCount"
@@ -20,8 +21,7 @@ export const sourcesRouter = (t: any, protectedProcedure: any) => t.router({
       ORDER BY ds."createdAt" DESC
     `;
     const { rows } = await query<DataSource & { docCount: string }>(sql, [ctx.organizationId]);
-    
-    return rows.map(r => ({
+    return rows.map((r: any) => ({
       ...r,
       _count: { documents: parseInt(r.docCount || "0") }
     }));
@@ -47,36 +47,60 @@ export const sourcesRouter = (t: any, protectedProcedure: any) => t.router({
       contentBase64: z.string()
     }))
     .mutation(async ({ ctx, input }: any) => {
-      // 1. Ensure "Manual Upload" datasource exists
+      const orgId = ctx.organizationId;
+
+      if (!input.fileName.trim()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Filename required" });
+      }
+      
+      const ext = input.fileName.split('.').pop()?.toLowerCase();
+      if (!['txt', 'md', 'pdf'].includes(ext || '')) {
+         throw new TRPCError({ code: "BAD_REQUEST", message: "Only .txt, .md, .pdf allowed" });
+      }
+
+      if (input.contentBase64.length > MAX_FILE_SIZE_B * 1.37) {
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File too large (max 10MB)" });
+      }
+
       let { rows: dsRows } = await query<DataSource>(
         `SELECT * FROM "DataSource" WHERE "organizationId" = $1 AND type = 'MANUAL_UPLOAD'`, 
-        [ctx.organizationId]
+        [orgId]
       );
       let ds = dsRows[0];
 
       if (!ds) {
-        const newDsId = randomUUID();
-        await query(
-          `INSERT INTO "DataSource" (id, "organizationId", type, "displayName", status) VALUES ($1, $2, 'MANUAL_UPLOAD', 'Manual Uploads', 'ACTIVE')`,
-          [newDsId, ctx.organizationId]
-        );
-        ds = { id: newDsId } as DataSource; // minimal needed
+        ds = await createDataSource({
+          id: randomUUID(),
+          organizationId: orgId,
+          type: "MANUAL_UPLOAD",
+          displayName: "Manual Uploads",
+          status: "ACTIVE"
+        });
       }
 
-      // 2. Create Document record
-      const docId = randomUUID();
-      await query(
-        `INSERT INTO "Document" (id, "organizationId", "dataSourceId", title, "mimeType", status) VALUES ($1, $2, $3, $4, 'text/plain', 'PENDING')`,
-        [docId, ctx.organizationId, ds.id, input.fileName]
-      );
+      const doc = await createDocument({
+        id: randomUUID(),
+        organizationId: orgId,
+        dataSourceId: ds.id,
+        title: input.fileName,
+        mimeType: "text/plain",
+        status: "PENDING"
+      });
 
-      // 3. Queue Job
       await ingestionQueue.add("ingest-doc", {
-        organizationId: ctx.organizationId,
-        documentId: docId,
+        organizationId: orgId,
+        documentId: doc.id,
         contentBase64: input.contentBase64 
       });
 
-      return { id: docId };
+      await createAuditEvent({
+        id: randomUUID(),
+        organizationId: orgId,
+        userId: ctx.userId,
+        type: "DOCUMENT_UPLOAD",
+        metadata: { documentId: doc.id, fileName: input.fileName }
+      });
+
+      return { id: doc.id };
     })
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { query, ChatSession, Message } from "@lumina/db";
+import { query, createChatSession, ChatSession, Message } from "@lumina/db";
 import { randomUUID } from "crypto";
 
 export const chatRouter = (t: any, protectedProcedure: any) => t.router({
@@ -12,18 +12,18 @@ export const chatRouter = (t: any, protectedProcedure: any) => t.router({
   }),
 
   createSession: protectedProcedure.mutation(async ({ ctx }: any) => {
-    const id = randomUUID();
-    await query(
-      `INSERT INTO "ChatSession" (id, "organizationId", "userId", title) VALUES ($1, $2, $3, 'New Chat')`,
-      [id, ctx.organizationId, ctx.userId]
-    );
-    return { id };
+    const s = await createChatSession({
+      id: randomUUID(),
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      title: "New Chat"
+    });
+    return { id: s.id };
   }),
   
   getHistory: protectedProcedure
     .input(z.object({ sessionId: z.string() }))
     .query(async ({ ctx, input }: any) => {
-      // Verify ownership
       const { rows: sessions } = await query<ChatSession>(
         `SELECT * FROM "ChatSession" WHERE id = $1 AND "organizationId" = $2`,
         [input.sessionId, ctx.organizationId]

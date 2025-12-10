@@ -4,7 +4,7 @@ import { z } from "zod";
 import { sourcesRouter } from "./sources";
 import { teamRouter } from "./team";
 import { chatRouter } from "./chat";
-import { query, User, Membership } from "@lumina/db";
+import { query, getUserByClerkUserId, createUser, createOrganization, createMembership, User, Membership } from "@lumina/db";
 import { randomUUID } from "crypto";
 
 const t = initTRPC.context<Context>().create();
@@ -12,22 +12,17 @@ const t = initTRPC.context<Context>().create();
 export const middleware = t.middleware;
 export const publicProcedure = t.procedure;
 
-// Auth Middleware: Ensures user is logged in and attaches Org
 const isAuthed = middleware(async ({ ctx, next }) => {
-  // Hardcoded for dev/demo if headers missing
-  const userId = ctx.userId || ctx.req.headers['x-user-id'] as string;
+  const userId = ctx.req.headers['x-user-id'] as string;
+  const organizationId = ctx.req.headers['x-org-id'] as string;
+
   if (!userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
 
-  // Get Org ID from header (client selects org)
-  const organizationId = ctx.req.headers['x-org-id'] as string;
-  if (!organizationId) {
-     throw new TRPCError({ code: "BAD_REQUEST", message: "Organization ID required" });
-  }
-
   return next({
     ctx: {
+      ...ctx,
       userId,
       organizationId,
     },
@@ -41,55 +36,41 @@ export const appRouter = t.router({
   sources: sourcesRouter(t, protectedProcedure),
   team: teamRouter(t, protectedProcedure),
   chat: chatRouter(t, protectedProcedure),
-  // Bootstrapping: Check if user exists, create if not
+  
   me: publicProcedure
     .input(z.object({ clerkId: z.string(), email: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      // Find User
-      const userRes = await query<User>(`SELECT * FROM "User" WHERE "clerkUserId" = $1`, [input.clerkId]);
-      let user = userRes.rows[0];
-
+    .mutation(async ({ input }) => {
+      let user = await getUserByClerkUserId(input.clerkId);
       if (!user) {
-        const newId = randomUUID();
-        await query(`INSERT INTO "User" (id, "clerkUserId", email) VALUES ($1, $2, $3)`, [newId, input.clerkId, input.email]);
-        const newUserRes = await query<User>(`SELECT * FROM "User" WHERE id = $1`, [newId]);
-        user = newUserRes.rows[0];
+        user = await createUser(randomUUID(), input.clerkId, input.email);
       }
 
-      // Return memberships
-      // Using a JOIN-like structure or just fetching memberships and manually stitching orgs if needed, 
-      // but simple select with join is better
-      const memberRes = await query<Membership & { orgName: string }>(`
+      const { rows: memberships } = await query<Membership & { orgName: string, orgId: string }>(`
         SELECT m.*, o.name as "orgName", o.id as "orgId" 
         FROM "Membership" m 
         JOIN "Organization" o ON m."organizationId" = o.id 
         WHERE m."userId" = $1
       `, [user.id]);
-
-      // Map to expected format
-      const memberships = memberRes.rows.map(row => ({
-          ...row,
-          organization: { id: row.organizationId, name: row.orgName }
+      
+      const mappedMemberships = memberships.map(m => ({
+          ...m,
+          organization: { id: m.orgId, name: m.orgName }
       }));
 
-      return { user, memberships };
+      return { user, memberships: mappedMemberships };
     }),
+
   createOrg: publicProcedure
     .input(z.object({ clerkId: z.string(), name: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-       const userRes = await query<User>(`SELECT * FROM "User" WHERE "clerkUserId" = $1`, [input.clerkId]);
-       const user = userRes.rows[0];
-       if (!user) throw new Error("User not found");
+    .mutation(async ({ input }) => {
+      const user = await getUserByClerkUserId(input.clerkId);
+      if (!user) throw new Error("User not found");
 
-       const orgId = randomUUID();
-       const memberId = randomUUID();
+      const orgId = randomUUID();
+      await createOrganization(orgId, input.name);
+      await createMembership(randomUUID(), user.id, orgId, 'ADMIN');
 
-       // Transaction implies sequential execution here or using BEGIN/COMMIT blocks via client
-       // For MVP simplicity, sequential awaits
-       await query(`INSERT INTO "Organization" (id, name) VALUES ($1, $2)`, [orgId, input.name]);
-       await query(`INSERT INTO "Membership" (id, "userId", "organizationId", role) VALUES ($1, $2, $3, 'ADMIN')`, [memberId, user.id, orgId]);
-
-       return { id: orgId, name: input.name };
+      return { id: orgId, name: input.name };
     })
 });
 

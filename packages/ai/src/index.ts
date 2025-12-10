@@ -20,12 +20,14 @@ export interface IVectorStore {
   query(vector: number[], topK: number, filter: { organizationId: string }): Promise<VectorChunk[]>;
 }
 
-// Simple File-based Vector Store for Dev/MVP (persists to JSON to share between API and Worker)
+// Simple File-based Vector Store
 export class SimpleFileVectorStore implements IVectorStore {
   private filePath: string;
 
   constructor() {
     this.filePath = path.resolve(CONSTANTS.VECTOR_STORE_FILE_PATH);
+    const dir = path.dirname(this.filePath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   }
 
   private load(): VectorChunk[] {
@@ -43,7 +45,6 @@ export class SimpleFileVectorStore implements IVectorStore {
 
   async upsertMany(newChunks: VectorChunk[]): Promise<void> {
     const current = this.load();
-    // naive append
     const updated = [...current, ...newChunks];
     this.save(updated);
   }
@@ -52,7 +53,6 @@ export class SimpleFileVectorStore implements IVectorStore {
     const all = this.load();
     const filtered = all.filter(c => c.metadata.organizationId === filter.organizationId);
     
-    // Cosine similarity
     const scored = filtered.map(chunk => ({
       chunk,
       score: this.cosineSimilarity(vector, chunk.vector)
@@ -78,14 +78,24 @@ const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY || "sk-dummy" });
 
 export async function embedText(text: string): Promise<number[]> {
   if (!env.OPENAI_API_KEY) {
-    // Fake embedding for dev without API key
-    return new Array(1536).fill(0).map(() => Math.random());
+    const seed = text.length;
+    return new Array(1536).fill(0).map((_, i) => Math.sin(seed + i));
   }
   const res = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
+    model: "text-embedding-3-small",
     input: text.replace(/\n/g, " "),
   });
   return res.data[0].embedding;
+}
+
+// --- UTILITIES ---
+
+export function chunkText(text: string, size: number, overlap: number): string[] {
+  const chunks: string[] = [];
+  for (let i = 0; i < text.length; i += (size - overlap)) {
+    chunks.push(text.slice(i, i + size));
+  }
+  return chunks;
 }
 
 export async function* generateAnswerStream(
@@ -103,9 +113,9 @@ export async function* generateAnswerStream(
   ${contextText}`;
 
   if (!env.OPENAI_API_KEY) {
-    yield "Lumina (Dev Mode): I am simulating a response because no OpenAI Key was provided.\n\n";
-    yield `Based on ${contextChunks.length} context chunks found...\n`;
-    yield "Here is a simulated answer to: " + question;
+    yield "Lumina (Dev Mode): Simulating response.\n\n";
+    yield `Found ${contextChunks.length} relevant chunks.\n`;
+    yield "No valid OpenAI API key provided in .env";
     return;
   }
 

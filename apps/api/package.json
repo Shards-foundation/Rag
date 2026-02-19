@@ -11,7 +11,7 @@
     "@fastify/cors": "^8.4.1",
     "@trpc/server": "^10.43.0",
     "@fastify/static": "^6.12.0",
-    "zod": "^3.22.0",
+    "zod": "^4.3.6",
     "bullmq": "^4.12.0",
     "@clerk/clerk-sdk-node": "^4.12.0",
     "@lumina/db": "workspace:*",

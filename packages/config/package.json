@@ -5,7 +5,7 @@
   "types": "./src/index.ts",
   "dependencies": {
     "zod": "^3.22.0",
-    "dotenv": "^16.3.0"
+    "dotenv": "^17.3.1"
   },
   "devDependencies": {
     "typescript": "^5.3.0",

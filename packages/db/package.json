@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "pg": "^8.11.3",
-    "zod": "^3.22.0",
+    "zod": "^4.3.6",
     "@lumina/config": "workspace:*"
   },
   "devDependencies": {

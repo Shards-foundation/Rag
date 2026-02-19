@@ -7,7 +7,7 @@
   },
   "dependencies": {
     "bullmq": "^4.12.0",
-    "zod": "^3.22.0",
+    "zod": "^4.3.6",
     "@lumina/db": "workspace:*",
     "@lumina/config": "workspace:*",
     "@lumina/ai": "workspace:*"

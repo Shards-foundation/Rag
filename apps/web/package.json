@@ -19,7 +19,7 @@
     "zustand": "^4.4.0",
     "lucide-react": "^0.292.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.0.0",
+    "tailwind-merge": "^3.5.0",
     "@radix-ui/react-slot": "^1.0.0",
     "@lumina/config": "workspace:*",
     "@lumina/types": "workspace:*"

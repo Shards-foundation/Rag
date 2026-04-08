@@ -9,7 +9,7 @@
   "dependencies": {
     "fastify": "^5.7.4",
     "@fastify/cors": "^8.4.1",
-    "@trpc/server": "^10.43.0",
+    "@trpc/server": "^11.16.0",
     "@fastify/static": "^9.0.0",
     "zod": "^3.22.0",
     "bullmq": "^4.12.0",

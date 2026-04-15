@@ -4,7 +4,7 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "dependencies": {
-    "react": "^18.0.0",
+    "react": "^19.2.5",
     "lucide-react": "^0.292.0"
   },
   "devDependencies": {

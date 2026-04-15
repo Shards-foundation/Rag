@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "next": "^16.1.6",
-    "react": "^18.0.0",
+    "react": "^19.2.5",
     "react-dom": "^18.0.0",
     "@clerk/nextjs": "^4.27.0",
     "@tanstack/react-query": "^5.96.2",

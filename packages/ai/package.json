@@ -9,7 +9,7 @@
   "dependencies": {
     "@lumina/config": "workspace:*",
     "@lumina/types": "workspace:*",
-    "openai": "^4.20.0"
+    "openai": "^6.34.0"
   },
   "devDependencies": {
     "typescript": "^5.3.0",

@@ -1,5 +1,5 @@
 'use client';
-import { trpc } from "../../../../../lib/trpc";
+import { trpc } from "../../../../lib/trpc";
 import React from "react";
 import { UploadCloud, CheckCircle, Loader2, AlertCircle, FileText } from "lucide-react";
 
@@ -44,9 +44,9 @@ export default function SourcesPage() {
             <h3 className="font-bold text-lg">Manual Upload</h3>
           </div>
           <p className="text-sm text-slate-400 mb-6">Upload PDF, TXT, MD files.</p>
-          <label className={`block w-full text-center py-2 rounded-lg cursor-pointer font-medium transition ${upload.isLoading ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
-            {upload.isLoading ? 'Uploading...' : 'Choose File'}
-            <input type="file" onChange={handleFile} disabled={upload.isLoading} className="hidden"/>
+          <label className={`block w-full text-center py-2 rounded-lg cursor-pointer font-medium transition ${upload.isPending ? 'bg-slate-800 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+            {upload.isPending ? 'Uploading...' : 'Choose File'}
+            <input type="file" onChange={handleFile} disabled={upload.isPending} className="hidden"/>
           </label>
         </div>
         

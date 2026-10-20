@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { store } from '@/lib/liteStore';
+import { store } from '../../../../lib/liteStore';
 
 export async function GET() {
     return NextResponse.json({ sessions: store.getSessions() });

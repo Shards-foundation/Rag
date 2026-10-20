@@ -1,7 +1,7 @@
 import React from 'react';
 import { ClerkProvider } from '@clerk/nextjs';
 import { TrpcProvider } from './trpc-provider';
-import './globals.css';
+import '../globals.css';
 
 export const metadata = {
   title: 'Lumina',

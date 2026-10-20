@@ -1,5 +1,5 @@
 'use client';
-import { trpc } from "../../../../lib/trpc";
+import { trpc } from "../../../lib/trpc";
 import React, { useState, useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Send, Plus, MessageSquare, AlertCircle } from "lucide-react";

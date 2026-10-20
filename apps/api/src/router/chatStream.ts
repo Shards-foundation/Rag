@@ -58,8 +58,8 @@ export async function chatStreamHandler(req: any, reply: any) {
     );
 
     const historyFormatted = history.map((h) => ({
-      role: h.role === 'USER' ? 'user' : 'assistant' as const,
-      content: h.content
+      role: (h.role === "USER" ? "user" : "assistant") as "user" | "assistant",
+      content: h.content,
     }));
 
     reply.raw.setHeader("Content-Type", "text/event-stream");
@@ -68,7 +68,11 @@ export async function chatStreamHandler(req: any, reply: any) {
 
     let fullResponse = "";
 
-    const generator = generateAnswerStream(message, contextChunks, historyFormatted);
+    const generator = generateAnswerStream(
+      message,
+      contextChunks.map((chunk) => ({ content: chunk.metadata.content })),
+      historyFormatted,
+    );
     
     for await (const token of generator) {
       reply.raw.write(token);

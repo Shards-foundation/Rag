@@ -1,9 +1,9 @@
 import { inferAsyncReturnType } from "@trpc/server";
 import { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
-import { Clerk } from "@clerk/clerk-sdk-node";
+import { createClerkClient } from "@clerk/clerk-sdk-node";
 import { env } from "@lumina/config";
 
-const clerk = Clerk({ secretKey: env.CLERK_SECRET_KEY });
+const clerk = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
 
 export async function createContext({ req, res }: CreateFastifyContextOptions) {
   const authHeader = req.headers.authorization;

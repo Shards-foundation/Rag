@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { query, createChatSession, ChatSession, Message } from "@lumina/db";
 import { randomUUID } from "crypto";
+import { protectedProcedure, router } from "./trpc";
 
-export const chatRouter = (t: any, protectedProcedure: any) => t.router({
+export const chatRouter = router({
   listSessions: protectedProcedure.query(async ({ ctx }: any) => {
     const { rows } = await query<ChatSession>(
       `SELECT * FROM "ChatSession" WHERE "organizationId" = $1 AND "userId" = $2 ORDER BY "updatedAt" DESC`,

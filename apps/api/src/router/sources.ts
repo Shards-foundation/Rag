@@ -4,6 +4,7 @@ import { z } from "zod";
 import { query, createDataSource, createDocument, createAuditEvent, DataSource, Document } from "@lumina/db";
 import { randomUUID } from "crypto";
 import { TRPCError } from "@trpc/server";
+import { protectedProcedure, router } from "./trpc";
 
 const ingestionQueue = new Queue("ingestion", {
   connection: { url: env.REDIS_URL }
@@ -11,7 +12,7 @@ const ingestionQueue = new Queue("ingestion", {
 
 const MAX_FILE_SIZE_B = 10 * 1024 * 1024; // 10MB
 
-export const sourcesRouter = (t: any, protectedProcedure: any) => t.router({
+export const sourcesRouter = router({
   list: protectedProcedure.query(async ({ ctx }: any) => {
     const sql = `
       SELECT ds.*, 

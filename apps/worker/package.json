@@ -8,9 +8,9 @@
   "dependencies": {
     "bullmq": "^5.73.0",
     "zod": "^3.22.0",
-    "@lumina/db": "workspace:*",
-    "@lumina/config": "workspace:*",
-    "@lumina/ai": "workspace:*"
+    "@lumina/db": "*",
+    "@lumina/config": "*",
+    "@lumina/ai": "*"
   },
   "devDependencies": {
     "tsx": "^4.0.0",

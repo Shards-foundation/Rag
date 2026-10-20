@@ -6,20 +6,25 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: "npm"
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Type check
-        run: npm run build -- --noEmit || npx tsc --noEmit || echo "No type check script"
+        run: npm run build -- --noEmit || npx tsc --noEmit
       - name: Build
-        run: npm run build || echo "No build script"
-
+        run: npm run build

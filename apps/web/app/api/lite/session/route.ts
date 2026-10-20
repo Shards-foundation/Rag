@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { store } from '@/lib/liteStore';
+import { store } from '../../../../lib/liteStore';
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);

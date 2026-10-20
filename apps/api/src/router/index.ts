@@ -1,41 +1,18 @@
-import { initTRPC, TRPCError } from "@trpc/server";
-import { Context } from "./context";
 import { z } from "zod";
 import { sourcesRouter } from "./sources";
 import { teamRouter } from "./team";
 import { chatRouter } from "./chat";
+import { middleware, protectedProcedure, publicProcedure, router } from "./trpc";
 import { query, getUserByClerkUserId, createUser, createOrganization, createMembership, User, Membership } from "@lumina/db";
 import { randomUUID } from "crypto";
 
-const t = initTRPC.context<Context>().create();
+export { middleware, protectedProcedure, publicProcedure };
 
-export const middleware = t.middleware;
-export const publicProcedure = t.procedure;
-
-const isAuthed = middleware(async ({ ctx, next }) => {
-  const userId = ctx.req.headers['x-user-id'] as string;
-  const organizationId = ctx.req.headers['x-org-id'] as string;
-
-  if (!userId) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-
-  return next({
-    ctx: {
-      ...ctx,
-      userId,
-      organizationId,
-    },
-  });
-});
-
-export const protectedProcedure = t.procedure.use(isAuthed);
-
-export const appRouter = t.router({
+export const appRouter = router({
   health: publicProcedure.query(() => "ok"),
-  sources: sourcesRouter(t, protectedProcedure),
-  team: teamRouter(t, protectedProcedure),
-  chat: chatRouter(t, protectedProcedure),
+  sources: sourcesRouter,
+  team: teamRouter,
+  chat: chatRouter,
   
   me: publicProcedure
     .input(z.object({ clerkId: z.string(), email: z.string() }))

@@ -14,10 +14,10 @@
     "zod": "^3.22.0",
     "bullmq": "^5.73.0",
     "@clerk/clerk-sdk-node": "^5.1.6",
-    "@lumina/db": "workspace:*",
-    "@lumina/config": "workspace:*",
-    "@lumina/ai": "workspace:*",
-    "@lumina/types": "workspace:*"
+    "@lumina/db": "*",
+    "@lumina/config": "*",
+    "@lumina/ai": "*",
+    "@lumina/types": "*"
   },
   "devDependencies": {
     "tsx": "^4.0.0",

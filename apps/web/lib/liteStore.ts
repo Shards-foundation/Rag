@@ -1,18 +1,18 @@
 import { INITIAL_DOCS } from './config';
 
-interface LiteDocument {
+export interface LiteDocument {
     id: string;
     title: string;
     content: string;
     createdAt: Date;
 }
 
-interface LiteMessage {
+export interface LiteMessage {
     role: 'user' | 'assistant';
     content: string;
 }
 
-interface LiteSession {
+export interface LiteSession {
     id: string;
     title: string;
     messages: LiteMessage[];

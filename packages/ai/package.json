@@ -7,8 +7,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@lumina/config": "workspace:*",
-    "@lumina/types": "workspace:*",
+    "@lumina/config": "*",
+    "@lumina/types": "*",
     "openai": "^6.34.0"
   },
   "devDependencies": {

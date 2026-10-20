@@ -64,7 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <NavLink href="/app/settings/sources" icon={<Database size={18}/>}>Data Sources</NavLink>
           <NavLink href="/app/settings/team" icon={<Users size={18}/>}>Team</NavLink>
         </nav>
-        <div className="text-xs text-slate-500">Org: {activeOrgId}</div>
+        <div className="text-xs text-slate-500">Org: {String(activeOrgId)}</div>
       </aside>
       <main className="flex-1 flex flex-col overflow-hidden">
         {children}
@@ -100,7 +100,7 @@ function CreateOrgForm({ userId }: { userId: string }) {
     return (
         <form onSubmit={onSubmit} className="flex gap-2">
             <input name="orgName" placeholder="Organization Name" className="text-black px-3 py-2 rounded" required />
-            <button disabled={createOrg.isLoading} className="bg-blue-600 px-4 py-2 rounded">Create</button>
+            <button disabled={createOrg.isPending} className="bg-blue-600 px-4 py-2 rounded">Create</button>
         </form>
     )
 }

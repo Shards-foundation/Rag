@@ -1,5 +1,5 @@
 'use client';
-import { trpc } from "../../../../../lib/trpc";
+import { trpc } from "../../../../lib/trpc";
 import { UserPlus, Shield, User as UserIcon, Users } from "lucide-react";
 
 export default function TeamPage() {

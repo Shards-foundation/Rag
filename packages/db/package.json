@@ -9,7 +9,7 @@
   "dependencies": {
     "pg": "^8.11.3",
     "zod": "^3.22.0",
-    "@lumina/config": "workspace:*"
+    "@lumina/config": "*"
   },
   "devDependencies": {
     "@types/pg": "^8.10.0",

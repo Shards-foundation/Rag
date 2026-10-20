@@ -1,6 +1,7 @@
 import { query, Membership, User } from "@lumina/db";
+import { protectedProcedure, router } from "./trpc";
 
-export const teamRouter = (t: any, protectedProcedure: any) => t.router({
+export const teamRouter = router({
   list: protectedProcedure.query(async ({ ctx }: any) => {
     const { rows } = await query<Membership & User>(`
       SELECT m.*, u.email, u.name 

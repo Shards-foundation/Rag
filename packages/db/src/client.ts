@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, type QueryResultRow } from "pg";
 import { env } from "@lumina/config";
 
 // Defensive check for Lite Mode
@@ -8,7 +8,10 @@ export const pool = new Pool({
   connectionString,
 });
 
-export async function query<T = any>(text: string, params: any[] = []): Promise<{ rows: T[] }> {
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params: any[] = [],
+): Promise<{ rows: T[] }> {
   const client = await pool.connect();
   try {
     const result = await client.query<T>(text, params);

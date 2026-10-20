@@ -1,6 +1,8 @@
 {
   "name": "lumina-web",
   "version": "0.0.0",
+  "license": "MIT",
+  "author": "Shards Inc Ltd",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",

@@ -1,6 +1,8 @@
 {
   "name": "lumina-api",
   "version": "0.0.0",
+  "license": "MIT",
+  "author": "Shards Inc Ltd",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",

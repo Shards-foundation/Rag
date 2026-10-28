@@ -1,0 +1,15 @@
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+enhancement:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "apps/**"
+          - "packages/**"
+          - "index.tsx"
+          - "vite.config.ts"
+github_actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"

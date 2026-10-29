@@ -27,7 +27,7 @@
     "@lumina/types": "*"
   },
   "devDependencies": {
-    "tailwindcss": "^3.3.0",
+    "tailwindcss": "^4.2.4",
     "postcss": "^8.4.0",
     "autoprefixer": "^10.4.0",
     "@types/react": "^19.2.14",

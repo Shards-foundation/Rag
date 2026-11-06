@@ -3,14 +3,17 @@
   "version": "0.0.0",
   "license": "MIT",
   "author": "Shards Inc Ltd",
-  "main": "./src/index.tsx",
-  "types": "./src/index.tsx",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "dependencies": {
-    "react": "^19.2.5",
-    "lucide-react": "^0.292.0"
+    "lucide-react": "^1.68.0",
+    "react": "^19.3.1"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
+    "@types/react": "^19.3.0",
     "typescript": "^5.3.0"
+  },
+  "scripts": {
+    "build": "tsc"
   }
 }

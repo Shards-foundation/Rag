@@ -1,19 +1,44 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["**/.env"],
+  "globalDependencies": [
+    "**/.env"
+  ],
+  "globalPassThroughEnv": [
+    "API_PORT",
+    "API_URL",
+    "CLERK_SECRET_KEY",
+    "DATABASE_URL",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    "NODE_ENV",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "OPENAI_CHAT_MODEL",
+    "REDIS_URL",
+    "UPLOAD_DIR",
+    "WEB_URL"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "dist/**"
+      ]
     },
     "dev": {
+      "dependsOn": [
+        "^build"
+      ],
       "cache": false,
       "persistent": true
     },
     "lint": {},
-    "test": {},
-    "db:init": {
-      "cache": false
+    "test": {
+      "dependsOn": [
+        "^build"
+      ]
     }
   }
 }

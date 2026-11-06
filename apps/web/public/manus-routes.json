@@ -1,0 +1,1 @@
+{"routes":[{"path":"/","title":"Lumina RAG"},{"path":"/chat","title":"Lite Mode chat"},{"path":"/documents","title":"Lite Mode documents"},{"path":"/app","title":"Workspace"},{"path":"/app/chat","title":"Workspace chat"},{"path":"/app/settings/sources","title":"Knowledge sources"},{"path":"/app/settings/team","title":"Team members"}]}

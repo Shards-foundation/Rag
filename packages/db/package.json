@@ -3,15 +3,16 @@
   "version": "0.0.0",
   "license": "MIT",
   "author": "Shards Inc Ltd",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "db:init": "tsx src/seed.ts"
+    "db:init": "node dist/seed.js",
+    "build": "tsc"
   },
   "dependencies": {
+    "@lumina/config": "*",
     "pg": "^8.11.3",
-    "zod": "^3.22.0",
-    "@lumina/config": "*"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/pg": "^8.10.0",

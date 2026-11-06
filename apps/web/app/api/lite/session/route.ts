@@ -1,13 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { store } from '../../../../lib/liteStore';
+import { NextRequest, NextResponse } from "next/server";
+import { store } from "../../../../lib/liteStore";
+import { getLiteOwner } from "../../../../lib/liteIdentity";
 
-export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
-
-    const session = store.getSession(id);
-    if (!session) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-    return NextResponse.json({ messages: session.messages });
+export async function GET(request: NextRequest) {
+  const ownerId = getLiteOwner(request);
+  if (!ownerId) return NextResponse.json({ error: "Lite Mode session is not initialized." }, { status: 401 });
+  const id = request.nextUrl.searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "Missing session ID." }, { status: 400 });
+  const session = store.getSession(ownerId, id);
+  if (!session) return NextResponse.json({ error: "Session not found." }, { status: 404 });
+  return NextResponse.json({ messages: session.messages });
 }

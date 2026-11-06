@@ -8,7 +8,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
-    "db:init": "turbo run db:init",
+    "db:init": "turbo run build --filter=@lumina/db... && npm run db:init --workspace=@lumina/db",
     "clean": "turbo run clean",
     "dev:web": "turbo run dev --filter=lumina-web",
     "dev:api": "turbo run dev --filter=lumina-api",
@@ -17,10 +17,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0",
     "turbo": "^2.8.10",
     "typescript": "^5.3.0",
-    "prettier": "^3.0.0",
-    "eslint": "^8.50.0",
     "vitest": "^4.0.18"
   },
   "packageManager": "npm@10.8.2",

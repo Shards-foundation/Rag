@@ -1,75 +1,102 @@
-import { Worker } from "bullmq";
-import { updateDocumentStatus, createDocumentChunk, createAuditEvent } from "@lumina/db";
-import { env, CONSTANTS } from "@lumina/config";
-import { embedText, vectorStore, chunkText } from "@lumina/ai";
-import { Buffer } from "buffer";
-import { randomUUID } from "crypto";
+import { Worker, type Job } from "bullmq";
+import { createAuditEvent, getDocumentForOrganization, replaceDocumentChunks, updateDocumentStatus } from "@lumina/db";
+import { env, CONSTANTS, requireEnvironment } from "@lumina/config";
+import { chunkText, embedTexts } from "@lumina/ai";
+import { PDFParse } from "pdf-parse";
+import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import process from "node:process";
 
-console.log("Worker starting...");
+function redisOptions() {
+  const url = new URL(env.REDIS_URL);
+  const database = url.pathname.length > 1 ? Number(url.pathname.slice(1)) : 0;
+  return {
+    host: url.hostname,
+    port: Number(url.port || (url.protocol === "rediss:" ? 6380 : 6379)),
+    ...(url.username ? { username: decodeURIComponent(url.username) } : {}),
+    ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+    ...(database ? { db: database } : {}),
+    ...(url.protocol === "rediss:" ? { tls: {} } : {}),
+    maxRetriesPerRequest: null as null,
+  };
+}
 
-const worker = new Worker("ingestion", async (job) => {
-  const { organizationId, documentId, contentBase64 } = job.data;
-  console.log(`Processing doc ${documentId} for org ${organizationId}`);
+async function extractText(filePath: string, mimeType: string): Promise<string> {
+  const buffer = await readFile(filePath);
+  if (buffer.byteLength > CONSTANTS.MAX_UPLOAD_BYTES) throw new Error("Stored upload exceeds the configured size limit.");
+  if (mimeType === "application/pdf") {
+    const parser = new PDFParse({ data: buffer });
+    try {
+      const result = await parser.getText();
+      if (result.text.length > 2_000_000) throw new Error("Extracted PDF text exceeds the 2,000,000 character limit.");
+      return result.text;
+    } finally {
+      await parser.destroy();
+    }
+  }
+  return buffer.toString("utf8").replace(/\u0000/g, "");
+}
 
-  try {
-    await updateDocumentStatus(documentId, "INDEXING");
+requireEnvironment("DATABASE_URL", "REDIS_URL", "OPENAI_API_KEY");
 
-    const content = Buffer.from(contentBase64, 'base64').toString('utf-8');
-    const chunks = chunkText(content, CONSTANTS.CHUNK_SIZE_CHARS, CONSTANTS.CHUNK_OVERLAP_CHARS);
+const worker = new Worker(
+  "ingestion",
+  async (job: Job<{ organizationId: string; documentId: string }>) => {
+    const { organizationId, documentId } = job.data;
+    const document = await getDocumentForOrganization(documentId, organizationId);
+    if (!document) throw new Error("Document no longer exists in this organization.");
 
-    const vectorChunks = [];
-    let idx = 0;
-    
-    for (const chunkTextVal of chunks) {
-      const embedding = await embedText(chunkTextVal);
-      const chunkId = randomUUID();
-      const embeddingRef = `vec_${documentId}_${idx}`;
+    try {
+      await updateDocumentStatus(documentId, organizationId, "INDEXING");
+      const filePath = path.resolve(CONSTANTS.UPLOAD_DIR, `${documentId}.upload`);
+      const content = await extractText(filePath, document.mimeType);
+      const parts = chunkText(content);
+      if (parts.length === 0) throw new Error("No readable text was found in this document.");
+      const embeddings = await embedTexts(parts);
+      if (embeddings.length !== parts.length) throw new Error("Embedding provider returned an incomplete batch.");
 
-      await createDocumentChunk({
-        id: chunkId,
+      const chunks = parts.map((text, index) => ({
+        id: randomUUID(),
         documentId,
         organizationId,
-        index: idx,
-        content: chunkTextVal,
-        embeddingRef
-      });
+        index,
+        content: text,
+        embeddingRef: `text-embedding-3-small:${documentId}:${index}`,
+        embedding: embeddings[index],
+      }));
+      await replaceDocumentChunks(documentId, organizationId, chunks);
+      await updateDocumentStatus(documentId, organizationId, "ACTIVE");
 
-      vectorChunks.push({
-        id: chunkId,
-        vector: embedding,
-        metadata: {
-          documentId,
+      try {
+        await createAuditEvent({
+          id: randomUUID(),
           organizationId,
-          content: chunkTextVal
-        }
-      });
-      idx++;
+          type: "DOCUMENT_PROCESSED",
+          metadata: { documentId, chunkCount: chunks.length },
+        });
+      } catch (auditError) {
+        console.warn("Unable to write document-processing audit event", auditError instanceof Error ? auditError.message : "unknown error");
+      }
+      console.info(`Indexed ${documentId}: ${chunks.length} chunks.`);
+    } catch (error) {
+      const maxAttempts = Number(job.opts.attempts ?? 1);
+      if (job.attemptsMade + 1 >= maxAttempts) {
+        await updateDocumentStatus(documentId, organizationId, "ERROR");
+      }
+      throw error;
     }
+  },
+  { connection: redisOptions(), concurrency: 3 },
+);
 
-    await vectorStore.upsertMany(vectorChunks);
-    await updateDocumentStatus(documentId, "ACTIVE");
-    
-    await createAuditEvent({
-        id: randomUUID(),
-        organizationId,
-        type: "DOCUMENT_PROCESSED",
-        metadata: { documentId, chunkCount: idx }
-    });
-    
-    console.log(`Done processing ${documentId}. Indexed ${idx} chunks.`);
+worker.on("completed", (job) => console.info(`Ingestion job ${job.id} completed.`));
+worker.on("failed", (job, error) => console.error(`Ingestion job ${job?.id ?? "unknown"} failed:`, error.message));
 
-  } catch (e) {
-    console.error("Job failed", e);
-    await updateDocumentStatus(documentId, "ERROR");
-    throw e;
-  }
-
-}, { connection: { url: env.REDIS_URL } });
-
-worker.on('completed', job => {
-  console.log(`${job.id} has completed!`);
-});
-
-worker.on('failed', (job, err) => {
-  console.log(`${job?.id} has failed with ${err.message}`);
-});
+async function shutdown(signal: string) {
+  console.info(`Worker received ${signal}; closing queue connection.`);
+  await worker.close();
+  process.exit(0);
+}
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));

@@ -15,7 +15,7 @@ export type ApiIdentity = { userId: string; clerkUserId: string };
 
 export async function verifyRequestIdentity(authorization: string | undefined): Promise<ApiIdentity | null> {
   if (!authorization) return null;
-  const match = /^Bearer\\s+([^\\s]+)$/i.exec(authorization.trim());
+  const match = /^Bearer\s+([^\s]+)$/i.exec(authorization.trim());
   if (!match || !env.CLERK_SECRET_KEY) return null;
 
   // Only invalid bearer-token verification fails as unauthenticated. Database or

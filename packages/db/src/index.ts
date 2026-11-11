@@ -188,6 +188,34 @@ export async function listOrganizationChunks(organizationId: string) {
   return rows;
 }
 
+export type OrganizationChunkCursor = { documentId: string; index: number };
+
+/**
+ * Bounded, stable keyset page for tenant-scoped retrieval. A caller may not
+ * request an unbounded result: large corpora must be scanned in pages or
+ * migrated to database-native vector search.
+ */
+export async function listOrganizationChunkPage(
+  organizationId: string,
+  cursor: OrganizationChunkCursor | null,
+  limit = 128,
+): Promise<Array<DocumentChunk & { documentTitle: string }>> {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 128) {
+    throw new RangeError("Chunk page size must be between 1 and 128.");
+  }
+  const { rows } = await query<DocumentChunk & { documentTitle: string }>(
+    `SELECT c.*, d.title AS "documentTitle"
+     FROM "DocumentChunk" c
+     JOIN "Document" d ON d.id = c."documentId" AND d."organizationId" = c."organizationId"
+     WHERE c."organizationId" = $1 AND d.status = 'ACTIVE'
+       AND ($2::text IS NULL OR (c."documentId", c.index) > ($2::text, $3::integer))
+     ORDER BY c."documentId", c.index
+     LIMIT $4`,
+    [organizationId, cursor?.documentId ?? null, cursor?.index ?? null, limit],
+  );
+  return rows;
+}
+
 export async function createChatSession(session: Partial<ChatSession>): Promise<ChatSession> {
   const { rows } = await query<ChatSession>(
     `INSERT INTO "ChatSession" (id, "organizationId", "userId", title)

@@ -22,7 +22,7 @@ vi.mock("@lumina/db", () => ({
   upsertUser: mocks.upsertUser,
 }));
 
-import { authenticatedProcedure, router } from "./trpc";
+import { authenticatedProcedure, protectedProcedure, router } from "./trpc";
 import { createContext, verifyRequestIdentity } from "./context";
 
 describe("API identity security", () => {
@@ -69,4 +69,42 @@ describe("API identity security", () => {
     await expect(verifyRequestIdentity("Bearer forged-token")).resolves.toBeNull();
     warning.mockRestore();
   });
+
+  it("rejects a verified user who is not a member of the requested organization", async () => {
+    mocks.verifyToken.mockResolvedValue({ sub: "user_verified" });
+    mocks.getUserByClerkUserId.mockResolvedValue({ id: "db-user-1", clerkUserId: "user_verified" });
+    mocks.getMembershipForUserInOrg.mockResolvedValue(null);
+    const context = await createContext({
+      req: { headers: { authorization: "Bearer signed-session-token", "x-org-id": "foreign-org" } },
+      res: {},
+    } as unknown as CreateFastifyContextOptions);
+    const protectedRouter = router({ org: protectedProcedure.query(({ ctx }) => ctx.organizationId) });
+    await expect(protectedRouter.createCaller(context).org()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.getMembershipForUserInOrg).toHaveBeenCalledWith("db-user-1", "foreign-org");
+  });
+
+  it("requires a selected organization even with a verified bearer token", async () => {
+    mocks.verifyToken.mockResolvedValue({ sub: "user_verified" });
+    mocks.getUserByClerkUserId.mockResolvedValue({ id: "db-user-1", clerkUserId: "user_verified" });
+    const context = await createContext({
+      req: { headers: { authorization: "Bearer signed-session-token" } },
+      res: {},
+    } as unknown as CreateFastifyContextOptions);
+    const protectedRouter = router({ org: protectedProcedure.query(({ ctx }) => ctx.organizationId) });
+    await expect(protectedRouter.createCaller(context).org()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mocks.getMembershipForUserInOrg).not.toHaveBeenCalled();
+  });
+
+  it("accepts only the database-confirmed membership scope", async () => {
+    mocks.verifyToken.mockResolvedValue({ sub: "user_verified" });
+    mocks.getUserByClerkUserId.mockResolvedValue({ id: "db-user-1", clerkUserId: "user_verified" });
+    mocks.getMembershipForUserInOrg.mockResolvedValue({ organizationId: "allowed-org", userId: "db-user-1", role: "ADMIN" });
+    const context = await createContext({
+      req: { headers: { authorization: "Bearer signed-session-token", "x-org-id": "allowed-org" } },
+      res: {},
+    } as unknown as CreateFastifyContextOptions);
+    const protectedRouter = router({ org: protectedProcedure.query(({ ctx }) => ctx.organizationId) });
+    await expect(protectedRouter.createCaller(context).org()).resolves.toBe("allowed-org");
+  });
+
 });

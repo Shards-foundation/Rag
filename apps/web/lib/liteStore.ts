@@ -59,8 +59,7 @@ function state(ownerId: string): OwnerState {
   let entry = shared.tenants.get(ownerId);
   if (!entry) {
     if (shared.tenants.size >= MAX_ACTIVE_OWNERS) {
-      const oldestOwnerId = shared.tenants.keys().next().value as string | undefined;
-      if (oldestOwnerId) removeOwner(oldestOwnerId);
+      throw new Error("Lite Mode has reached temporary visitor capacity. Please retry later.");
     }
     entry = { documents: [], sessions: [], lastAccessedAt: now, documentChars: 0, messageChars: 0 };
   }

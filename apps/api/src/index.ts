@@ -6,6 +6,7 @@ import { createContext } from "./router/context";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { chatStreamHandler } from "./router/chatStream";
 import { checkIngestionQueueHealth, closeIngestionQueue } from "./router/sources";
+import { closeRateLimiter } from "./router/rateLimit";
 import { pool, query } from "@lumina/db";
 import process from "node:process";
 import { mkdir } from "node:fs/promises";
@@ -54,6 +55,7 @@ async function shutdown(signal: string): Promise<void> {
   server.log.info({ signal }, "Closing API server");
   await server.close();
   await closeIngestionQueue();
+  await closeRateLimiter();
   await pool.end();
   process.exit(0);
 }

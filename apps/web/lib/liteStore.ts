@@ -53,6 +53,18 @@ function cleanupExpiredOwners(now: number): void {
   shared.nextCleanupAt = now + OWNER_CLEANUP_INTERVAL_MS;
 }
 
+// Read-only paths must not allocate new visitors or consume shared capacity.
+function peek(ownerId: string): OwnerState | undefined {
+  const now = Date.now();
+  cleanupExpiredOwners(now);
+  const entry = shared.tenants.get(ownerId);
+  if (!entry) return undefined;
+  entry.lastAccessedAt = now;
+  shared.tenants.delete(ownerId);
+  shared.tenants.set(ownerId, entry);
+  return entry;
+}
+
 function state(ownerId: string): OwnerState {
   const now = Date.now();
   cleanupExpiredOwners(now);
@@ -78,7 +90,7 @@ function discardSession(owner: OwnerState, session: LiteSession): void {
 
 export const store = {
   getDocuments(ownerId: string): LiteDocument[] {
-    return [...state(ownerId).documents];
+    return [...(peek(ownerId)?.documents ?? [])];
   },
 
   addDocument(ownerId: string, title: string, content: string, mimeType: string, size: number): LiteDocument {
@@ -94,7 +106,7 @@ export const store = {
   },
 
   getSessions(ownerId: string): LiteSession[] {
-    return [...state(ownerId).sessions].sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
+    return [...(peek(ownerId)?.sessions ?? [])].sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime());
   },
 
   createSession(ownerId: string): LiteSession {
@@ -109,7 +121,7 @@ export const store = {
   },
 
   getSession(ownerId: string, id: string): LiteSession | undefined {
-    return state(ownerId).sessions.find((session) => session.id === id);
+    return peek(ownerId)?.sessions.find((session) => session.id === id);
   },
 
   addMessage(ownerId: string, sessionId: string, role: "user" | "assistant", content: string, sources?: LiteCitation[]): LiteSession | undefined {

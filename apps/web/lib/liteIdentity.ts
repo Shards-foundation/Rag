@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import type { NextRequest, NextResponse } from "next/server";
 
 export const LITE_OWNER_COOKIE = "lumina_lite_owner";
+
+/** Public Lite Mode is opt-in in production; a trusted edge must enforce abuse limits. */
+export function isLiteModeEnabled(): boolean {
+  return process.env.NODE_ENV !== "production" || process.env.LITE_MODE_ENABLED === "true";
+}
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function getLiteOwner(request: NextRequest): string | null {

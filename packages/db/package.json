@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "pg": "^8.11.3",
-    "zod": "^3.22.0",
+    "zod": "^4.6.7",
     "@lumina/config": "*"
   },
   "devDependencies": {

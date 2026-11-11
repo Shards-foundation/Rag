@@ -208,8 +208,8 @@ export async function listOrganizationChunkPage(
      FROM "DocumentChunk" c
      JOIN "Document" d ON d.id = c."documentId" AND d."organizationId" = c."organizationId"
      WHERE c."organizationId" = $1 AND d.status = 'ACTIVE'
-       AND ($2::text IS NULL OR (c."documentId", c.index) > ($2::text, $3::integer))
-     ORDER BY c."documentId", c.index
+       AND ($2::text IS NULL OR (c."documentId", c."index") > ($2::text, $3::integer))
+     ORDER BY c."documentId", c."index"
      LIMIT $4`,
     [organizationId, cursor?.documentId ?? null, cursor?.index ?? null, limit],
   );

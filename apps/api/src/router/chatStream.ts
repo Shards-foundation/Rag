@@ -3,6 +3,7 @@ import type { Message } from "@lumina/db";
 import { embedText, generateAnswerStream } from "@lumina/ai";
 import { env } from "@lumina/config";
 import { RetrievalCapacityError, retrieveOrganizationPassages } from "./retrieval";
+import { enforceUserRateLimit } from "./rateLimit";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -55,6 +56,16 @@ export async function chatStreamHandler(req: any, reply: any): Promise<void> {
   if (!session) {
     reply.code(404).send({ error: "Chat session not found." });
     return;
+  }
+
+  try {
+    await enforceUserRateLimit("chat", identity.userId);
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "TOO_MANY_REQUESTS") {
+      reply.code(429).header("Retry-After", "60").send({ error: error.message });
+      return;
+    }
+    throw error;
   }
 
   const { rows: previousMessages } = await query<Message>(

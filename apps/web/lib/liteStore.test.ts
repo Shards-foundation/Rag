@@ -38,6 +38,18 @@ describe("Lite Mode tenant isolation and memory bounds", () => {
     }
   });
 
+  it("does not allocate owners for read-only lookups", () => {
+    for (let index = 0; index < 2_500; index += 1) {
+      const owner = `read-only-${index}`;
+      expect(store.getSessions(owner)).toEqual([]);
+      expect(store.getDocuments(owner)).toEqual([]);
+      expect(store.getSession(owner, "absent")).toBeUndefined();
+    }
+    const owner = "read-only-created-after-flood";
+    const session = store.createSession(owner);
+    expect(store.getSession(owner, session.id)).toBeDefined();
+  });
+
   it("refuses new visitors at capacity without deleting earlier visitors' sessions", () => {
     const firstOwner = "bounded-owner-0";
     const firstSession = store.createSession(firstOwner);

@@ -14,7 +14,7 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().optional(),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().optional(),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-  WEB_URL: z.string().url().default("http://localhost:3000"),
+  WEB_URL: z.string().url().transform((value) => new URL(value).origin).default("http://localhost:3000"),
   UPLOAD_DIR: z.string().optional(),
   OPENAI_CHAT_MODEL: z.string().default("gpt-4o-mini"),
 });

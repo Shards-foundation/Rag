@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TRPCError } from "@trpc/server";
 
 const mocks = vi.hoisted(() => ({
   verifyRequestIdentity: vi.fn(),
@@ -64,12 +65,19 @@ describe("chat stream authorization boundary", () => {
   });
 
   it("rejects unauthorized organization membership", async () => {
-    mocks.requireOrganizationMembership.mockRejectedValue(new Error("No membership"));
+    mocks.requireOrganizationMembership.mockRejectedValue(new TRPCError({ code: "FORBIDDEN" }));
     const res = reply();
     await chatStreamHandler(request({ "x-org-id": "org-other" }), res);
     expect(res.code).toHaveBeenCalledWith(403);
     expect(mocks.requireOrganizationMembership).toHaveBeenCalledWith("user-1", "org-other");
     expect(mocks.getChatSessionForUser).not.toHaveBeenCalled();
+  });
+
+  it("does not classify organization database outages as forbidden", async () => {
+    mocks.requireOrganizationMembership.mockRejectedValue(new Error("database unavailable"));
+    const res = reply();
+    await expect(chatStreamHandler(request(), res)).rejects.toThrow("database unavailable");
+    expect(res.code).not.toHaveBeenCalledWith(403);
   });
 
   it("rejects attempts to stream another user’s session", async () => {

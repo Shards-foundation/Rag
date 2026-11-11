@@ -1,7 +1,8 @@
-import { createMessage, getChatSessionForUser, listOrganizationChunks, query } from "@lumina/db";
+import { createMessage, getChatSessionForUser, query } from "@lumina/db";
 import type { Message } from "@lumina/db";
-import { embedText, generateAnswerStream, rankChunks } from "@lumina/ai";
-import { env, CONSTANTS } from "@lumina/config";
+import { embedText, generateAnswerStream } from "@lumina/ai";
+import { env } from "@lumina/config";
+import { RetrievalCapacityError, retrieveOrganizationPassages } from "./retrieval";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -69,8 +70,7 @@ export async function chatStreamHandler(req: any, reply: any): Promise<void> {
 
   try {
     const queryVector = await embedText(message);
-    const storedChunks = await listOrganizationChunks(organizationId);
-    const ranked = rankChunks(queryVector, storedChunks, CONSTANTS.DEFAULT_TOP_K);
+    const ranked = await retrieveOrganizationPassages(organizationId, queryVector);
     const citationMetadata = ranked.map(({ documentId, documentTitle, index, score, content }) => ({
       documentId, title: documentTitle, chunkIndex: index, score: Number(score.toFixed(4)), excerpt: content.slice(0, 800),
     }));
@@ -121,6 +121,10 @@ export async function chatStreamHandler(req: any, reply: any): Promise<void> {
     if (reply.raw.headersSent) {
       if (!controller.signal.aborted) sendEvent(reply.raw, "error", { message: "The answer could not be completed. Please try again." });
       if (!reply.raw.writableEnded) reply.raw.end();
+      return;
+    }
+    if (error instanceof RetrievalCapacityError) {
+      reply.code(503).send({ error: "The indexed corpus exceeds the safe retrieval limit. Database-native vector search is required for this workspace." });
       return;
     }
     const status = error instanceof Error && error.message.includes("OPENAI_API_KEY") ? 503 : 500;

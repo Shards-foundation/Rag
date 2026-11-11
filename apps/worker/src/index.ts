@@ -4,7 +4,7 @@ import { env, CONSTANTS, requireEnvironment } from "@lumina/config";
 import { chunkText, embedTexts } from "@lumina/ai";
 import { PDFParse } from "pdf-parse";
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
@@ -46,10 +46,13 @@ const worker = new Worker(
     const { organizationId, documentId } = job.data;
     const document = await getDocumentForOrganization(documentId, organizationId);
     if (!document) throw new Error("Document no longer exists in this organization.");
+    // Completed jobs are idempotent even if BullMQ redelivers a job after the
+    // original upload has already been removed.
+    if (document.status === "ACTIVE") return;
+    const filePath = path.resolve(CONSTANTS.UPLOAD_DIR, `${documentId}.upload`);
 
     try {
       await updateDocumentStatus(documentId, organizationId, "INDEXING");
-      const filePath = path.resolve(CONSTANTS.UPLOAD_DIR, `${documentId}.upload`);
       const content = await extractText(filePath, document.mimeType);
       const parts = chunkText(content);
       if (parts.length === 0) throw new Error("No readable text was found in this document.");
@@ -67,6 +70,11 @@ const worker = new Worker(
       }));
       await replaceDocumentChunks(documentId, organizationId, chunks);
       await updateDocumentStatus(documentId, organizationId, "ACTIVE");
+      // Raw uploads are transient processing artifacts; indexed text remains in
+      // PostgreSQL. Keep the raw file only while the job is still retryable.
+      await unlink(filePath).catch((error) => {
+        console.warn("Unable to delete indexed raw upload", error instanceof Error ? error.name : "unknown error");
+      });
 
       try {
         await createAuditEvent({
@@ -83,6 +91,8 @@ const worker = new Worker(
       const maxAttempts = Number(job.opts.attempts ?? 1);
       if (job.attemptsMade + 1 >= maxAttempts) {
         await updateDocumentStatus(documentId, organizationId, "ERROR");
+        // A terminally failed upload must not be retained indefinitely.
+        await unlink(filePath).catch(() => undefined);
       }
       throw error;
     }

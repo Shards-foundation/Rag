@@ -107,4 +107,11 @@ describe("API identity security", () => {
     await expect(protectedRouter.createCaller(context).org()).resolves.toBe("allowed-org");
   });
 
+
+  it("surfaces database outages instead of silently classifying them as invalid credentials", async () => {
+    mocks.verifyToken.mockResolvedValue({ sub: "user_verified" });
+    mocks.getUserByClerkUserId.mockRejectedValue(new Error("database unavailable"));
+    await expect(verifyRequestIdentity("Bearer signed-session-token")).rejects.toThrow("database unavailable");
+  });
+
 });

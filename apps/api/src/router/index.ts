@@ -5,6 +5,7 @@ import { chatRouter } from "./chat";
 import { authenticatedProcedure, middleware, protectedProcedure, publicProcedure, router } from "./trpc";
 import { createOrganizationForUser, getUserById, listMembershipsForUser } from "@lumina/db";
 import { randomUUID } from "node:crypto";
+import { enforceUserRateLimit } from "./rateLimit";
 
 export { middleware, authenticatedProcedure, protectedProcedure, publicProcedure };
 
@@ -24,6 +25,7 @@ export const appRouter = router({
   createOrg: authenticatedProcedure
     .input(z.object({ name: z.string().trim().min(2).max(80) }))
     .mutation(async ({ ctx, input }) => {
+      await enforceUserRateLimit("create-org", ctx.userId);
       const organization = await createOrganizationForUser(randomUUID(), input.name, ctx.userId);
       return { id: organization.id, name: organization.name };
     }),

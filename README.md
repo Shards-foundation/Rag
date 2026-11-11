@@ -27,7 +27,11 @@ npm run dev:all
 
 Open `http://localhost:3000`. The API listens on port 3001. `npm run dev:all` builds shared workspace packages before starting the web app, API, and worker. Lite Mode is available at `/chat` without Clerk, PostgreSQL, or Redis; PDF extraction runs in the Node.js web server. For full mode, Clerk's allowed origin and `WEB_URL` must exactly match the browser origin.
 
-The bundled Docker Compose ports for PostgreSQL and Redis are bound to `127.0.0.1` for local development; do not expose these services publicly. The API and worker must use the same `UPLOAD_DIR` and have read/write access to it. The default is the repository's `storage/uploads` directory. In a multi-container deployment, mount a shared persistent volume at that same path. Keep `.env` outside source control and use a separate strong PostgreSQL password and TLS-protected services outside local development.
+The bundled Docker Compose ports for PostgreSQL and Redis are bound to `127.0.0.1` for local development; do not expose these services publicly. ### Retrieval limits in this preview
+
+The full-workspace API currently stores embeddings as JSONB and computes cosine similarity in bounded, ordered batches (128 chunks per database query). It searches all active chunks **only when the workspace contains at most 2,048 chunks**. Larger corpora receive an explicit 503 instead of an incomplete answer; a database-native vector index such as pgvector is required before serving larger datasets. This bound limits per-request API memory but is **not** an indexed, low-latency production retrieval implementation. Server-side query/embedding quotas, global request-rate enforcement, and real-provider acceptance remain release gates.
+
+The API and worker must use the same `UPLOAD_DIR` and have read/write access to it. The default is the repository's `storage/uploads` directory. In a multi-container deployment, mount a shared persistent volume at that same path. Keep `.env` outside source control and use a separate strong PostgreSQL password and TLS-protected services outside local development.
 
 ## Full-app workflow
 

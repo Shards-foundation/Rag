@@ -56,6 +56,20 @@ npm audit --audit-level=high
 
 The unit tests cover chunking, retrieval ranking, Lite Mode visitor isolation and rejection of unauthorized organization scopes. The full end-to-end flow requires live Clerk and OpenAI credentials plus running PostgreSQL and Redis services.
 
+## Authenticated API request quotas
+
+The API uses a Redis-backed atomic counter per authenticated internal user ID to fail closed across API replicas when the request quota is exceeded:
+
+| Operation | Current engineering-preview limit |
+| --- | --- |
+| Chat stream | 20 requests/minute/user |
+| Document upload | 3 uploads/hour/user |
+| Workspace creation | 5 workspaces/day/user |
+
+Quota keys are SHA-256 hashes of the internal user identifier; no bearer tokens are persisted in the limiter keys. Redis outages reject quota-protected actions rather than permitting unbounded model spending. Quotas apply before chat message persistence and model calls.
+
+These limits provide only **per-authenticated-user request counts**. They do not substitute for a trusted edge enforcing IP/origin abuse limits, quotas on actual OpenAI tokens and embedding volume, subscription entitlements, or tenant-wide budgets. Those controls remain required for production use.
+
 ## Deployment and security acceptance
 
 This is an implementation branch, not a certification. Before enabling access for customers, verify all the following in an independently managed environment:

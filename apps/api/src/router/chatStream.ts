@@ -11,7 +11,9 @@ const chatStreamSchema = z.object({
   message: z.string().trim().min(1).max(4_000),
 }).strict();
 
-function sendEvent(response: NodeJS.WritableStream, event: string, data: unknown): void {
+type ChatStreamEvent = "sources" | "token" | "done" | "error";
+
+function sendEvent(response: NodeJS.WritableStream, event: ChatStreamEvent, data: unknown): void {
   response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 

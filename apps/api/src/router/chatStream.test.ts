@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   embedText: vi.fn(),
   generateAnswerStream: vi.fn(),
   rankChunks: vi.fn(),
+  enforceUserRateLimit: vi.fn(),
 }));
 
 vi.mock("./context", () => ({
@@ -28,6 +29,7 @@ vi.mock("@lumina/ai", () => ({
   generateAnswerStream: mocks.generateAnswerStream,
   rankChunks: mocks.rankChunks,
 }));
+vi.mock("./rateLimit", () => ({ enforceUserRateLimit: mocks.enforceUserRateLimit }));
 vi.mock("@lumina/config", () => ({
   env: { WEB_URL: "http://localhost:3000" },
   CONSTANTS: { DEFAULT_TOP_K: 5 },
@@ -42,8 +44,9 @@ function request(headers: Record<string, string> = {}) {
   };
 }
 function reply() {
-  const target = { code: vi.fn(), send: vi.fn() };
+  const target = { code: vi.fn(), header: vi.fn(), send: vi.fn() };
   target.code.mockReturnValue(target);
+  target.header.mockReturnValue(target);
   return target;
 }
 
@@ -53,6 +56,7 @@ describe("chat stream authorization boundary", () => {
     mocks.verifyRequestIdentity.mockResolvedValue({ userId: "user-1", clerkUserId: "clerk-1" });
     mocks.requireOrganizationMembership.mockResolvedValue({ organizationId: "org-1", userId: "user-1", role: "MEMBER" });
     mocks.getChatSessionForUser.mockResolvedValue(null);
+    mocks.enforceUserRateLimit.mockResolvedValue(undefined);
   });
 
   it("rejects callers without a verified identity before database access", async () => {
@@ -85,6 +89,25 @@ describe("chat stream authorization boundary", () => {
     await chatStreamHandler(request(), res);
     expect(res.code).toHaveBeenCalledWith(404);
     expect(mocks.getChatSessionForUser).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", "org-1", "user-1");
+    expect(mocks.createMessage).not.toHaveBeenCalled();
+  });
+
+  it("throttles valid chat sessions before persisting messages or spending model tokens", async () => {
+    mocks.getChatSessionForUser.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
+    mocks.enforceUserRateLimit.mockRejectedValue(new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Rate limit exceeded." }));
+    const res = reply();
+    await chatStreamHandler(request(), res);
+    expect(mocks.enforceUserRateLimit).toHaveBeenCalledWith("chat", "user-1");
+    expect(res.code).toHaveBeenCalledWith(429);
+    expect(res.header).toHaveBeenCalledWith("Retry-After", "60");
+    expect(mocks.createMessage).not.toHaveBeenCalled();
+    expect(mocks.embedText).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when shared Redis quota service is unavailable", async () => {
+    mocks.getChatSessionForUser.mockResolvedValue({ id: "11111111-1111-4111-8111-111111111111" });
+    mocks.enforceUserRateLimit.mockRejectedValue(new TRPCError({ code: "INTERNAL_SERVER_ERROR" }));
+    await expect(chatStreamHandler(request(), reply())).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
     expect(mocks.createMessage).not.toHaveBeenCalled();
   });
 

@@ -56,6 +56,10 @@ npm audit --audit-level=high
 
 The unit tests cover chunking, retrieval ranking, Lite Mode visitor isolation and rejection of unauthorized organization scopes. The full end-to-end flow requires live Clerk and OpenAI credentials plus running PostgreSQL and Redis services.
 
+## Raw upload lifecycle
+
+The ingestion worker removes temporary raw-upload files on successful indexing and after a terminally failed retry sequence. A repeated job for an already-`ACTIVE` document is skipped so that normal queue redelivery does not require the deleted file. Cleanup is best-effort: filesystem errors are logged, and the deployment still requires an orphan-file sweeper and an operational retention/deletion policy. The extracted chunks, embeddings and citation/message data remain in PostgreSQL until explicitly removed; deleting a raw file **does not delete indexed content**.
+
 ## Authenticated API request quotas
 
 The API uses a Redis-backed atomic counter per authenticated internal user ID to fail closed across API replicas when the request quota is exceeded:

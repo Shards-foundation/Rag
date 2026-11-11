@@ -2,7 +2,7 @@ import { PDFParse } from "pdf-parse";
 import { NextRequest, NextResponse } from "next/server";
 import path from "node:path";
 import { store } from "../../../../lib/liteStore";
-import { ensureLiteOwner, getLiteOwner, isSameOriginMutation } from "../../../../lib/liteIdentity";
+import { ensureLiteOwner, getLiteOwner, isLiteModeEnabled, isSameOriginMutation } from "../../../../lib/liteIdentity";
 
 export const runtime = "nodejs";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -10,12 +10,18 @@ const MAX_TEXT_CHARS = 2_000_000;
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 export async function GET(request: NextRequest) {
-  const response = NextResponse.json({ docs: [] });
-  const ownerId = ensureLiteOwner(request, response);
-  return NextResponse.json({ docs: store.getDocuments(ownerId) }, { headers: response.headers });
+  if (!isLiteModeEnabled()) return NextResponse.json({ error: "Lite Mode is disabled on this deployment." }, { status: 404 });
+  try {
+    const response = NextResponse.json({ docs: [] });
+    const ownerId = ensureLiteOwner(request, response);
+    return NextResponse.json({ docs: store.getDocuments(ownerId) }, { headers: response.headers });
+  } catch {
+    return NextResponse.json({ error: "Lite Mode visitor capacity reached." }, { status: 503 });
+  }
 }
 
 export async function POST(request: NextRequest) {
+  if (!isLiteModeEnabled()) return NextResponse.json({ error: "Lite Mode is disabled on this deployment." }, { status: 404 });
   if (!isSameOriginMutation(request)) return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
   const ownerId = getLiteOwner(request);
   if (!ownerId) return NextResponse.json({ error: "Open Lite Mode before uploading." }, { status: 401 });

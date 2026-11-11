@@ -20,11 +20,89 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
       - name: Install dependencies
         run: npm ci
-      - name: Type check
-        run: npm run build -- --noEmit || npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
       - name: Build
         run: npm run build
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+  postgres-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-ci-only
+          POSTGRES_DB: lumina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lumina"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres-ci-only@127.0.0.1:5432/lumina
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Migrate fresh PostgreSQL 16 and verify tenant contract
+        run: |
+          npm run db:init
+          node scripts/ci-postgres-contract.cjs verify-fresh
+      - name: Migrate legacy data without losing existing chunks
+        run: |
+          node scripts/ci-postgres-contract.cjs create-legacy-db
+          DATABASE_URL=postgresql://postgres:postgres-ci-only@127.0.0.1:5432/lumina_legacy node scripts/ci-postgres-contract.cjs prepare-legacy
+          DATABASE_URL=postgresql://postgres:postgres-ci-only@127.0.0.1:5432/lumina_legacy npm run db:init
+          DATABASE_URL=postgresql://postgres:postgres-ci-only@127.0.0.1:5432/lumina_legacy node scripts/ci-postgres-contract.cjs verify-legacy
+
+  redis-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      REDIS_URL: redis://127.0.0.1:6379
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build API and dependencies
+        run: npx --no-install turbo run build --filter=lumina-api...
+      - name: Verify atomic Redis quotas under contention
+        run: node scripts/ci-redis-contract.cjs

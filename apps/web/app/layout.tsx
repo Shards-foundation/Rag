@@ -1,36 +1,19 @@
-import React from 'react';
-import { ClerkProvider } from '@clerk/nextjs';
-import { TrpcProvider } from './trpc-provider';
-import '../globals.css';
+import React from "react";
+import { ClerkProvider } from "@clerk/nextjs";
+import { TrpcProvider } from "./trpc-provider";
+import "../globals.css";
 
 export const metadata = {
-  title: 'Lumina',
-  description: 'Enterprise AI Knowledge Hub',
+  title: "Lumina RAG",
+  description: "Private, source-grounded answers from your organization's documents.",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const hasClerkKey = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  if (hasClerkKey) {
-    return (
-      <ClerkProvider>
-        <html lang="en">
-          <body>
-            <TrpcProvider children={children} />
-          </body>
-        </html>
-      </ClerkProvider>
-    );
-  }
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const content = <TrpcProvider>{children}</TrpcProvider>;
   return (
     <html lang="en">
       <body>
-        <TrpcProvider children={children} />
+        {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? <ClerkProvider>{content}</ClerkProvider> : content}
       </body>
     </html>
   );

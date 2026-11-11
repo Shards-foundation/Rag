@@ -61,6 +61,7 @@ export type DocumentChunk = {
   index: number;
   content: string;
   embeddingRef: string | null;
+  embedding: number[] | null;
   createdAt: Date;
 };
 
@@ -75,11 +76,20 @@ export type ChatSession = {
 
 export type MessageRole = "USER" | "ASSISTANT";
 
+export type CitationSource = {
+  documentId: string;
+  title: string;
+  chunkIndex: number;
+  score: number;
+  excerpt?: string;
+};
+
 export type Message = {
   id: string;
   chatSessionId: string;
   role: MessageRole;
   content: string;
+  sources: CitationSource[] | null;
   createdAt: Date;
 };
 

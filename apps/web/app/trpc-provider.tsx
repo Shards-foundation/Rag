@@ -1,71 +1,46 @@
 'use client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { httpBatchLink } from '@trpc/client';
-import React, { useState } from 'react';
-import { trpc } from '../lib/trpc';
-import { useAuth, useUser } from '@clerk/nextjs';
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { httpBatchLink } from "@trpc/client";
+import React, { useMemo, useState } from "react";
+import { trpc } from "../lib/trpc";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 export function TrpcProvider({ children }: { children: React.ReactNode }) {
-  const isAuthConfigured = typeof process !== 'undefined' && !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  if (isAuthConfigured) {
-    return <AuthenticatedTrpcProvider children={children} />;
+  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return <AuthenticatedTrpcProvider>{children}</AuthenticatedTrpcProvider>;
   }
-
-  return <GuestTrpcProvider children={children} />;
+  return <GuestTrpcProvider>{children}</GuestTrpcProvider>;
 }
 
-function GuestTrpcProvider({ children }: { children: React.ReactNode }) {
+function QueryProvider({ children, headers }: { children: React.ReactNode; headers: () => Promise<Record<string, string>> }) {
   const [queryClient] = useState(() => new QueryClient());
-  const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpBatchLink({
-          url: 'http://localhost:3001/trpc',
-          headers() {
-            return {
-              'x-user-id': 'guest-preview'
-            };
-          },
-        }),
-      ],
-    })
-  );
+  const trpcClient = useMemo(() => trpc.createClient({
+    links: [httpBatchLink({ url: "/api/trpc", headers })],
+  }), [headers]);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </trpc.Provider>
   );
+}
+
+function GuestTrpcProvider({ children }: { children: React.ReactNode }) {
+  const headers = useMemo(() => async () => ({}), []);
+  return <QueryProvider headers={headers}>{children}</QueryProvider>;
 }
 
 function AuthenticatedTrpcProvider({ children }: { children: React.ReactNode }) {
   const { getToken } = useAuth();
   const { user } = useUser();
-  
-  const [queryClient] = useState(() => new QueryClient());
-  const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpBatchLink({
-          url: 'http://localhost:3001/trpc',
-          async headers() {
-            const token = await getToken();
-            const orgId = user?.unsafeMetadata?.activeOrgId as string || ""; 
-            return {
-              Authorization: token ? `Bearer ${token}` : undefined,
-              'x-user-id': user?.id, 
-              'x-org-id': orgId
-            };
-          },
-        }),
-      ],
-    })
-  );
-
-  return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </trpc.Provider>
-  );
+  const organizationId = String(user?.unsafeMetadata?.activeOrgId ?? "");
+  const headers = useMemo(() => async () => {
+    const token = await getToken();
+    return {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(organizationId ? { "x-org-id": organizationId } : {}),
+    };
+  }, [getToken, organizationId]);
+  return <QueryProvider headers={headers}>{children}</QueryProvider>;
 }

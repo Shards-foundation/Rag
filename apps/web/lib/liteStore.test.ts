@@ -1,0 +1,70 @@
+import { describe, expect, it, vi } from "vitest";
+import { store } from "./liteStore";
+
+const ownerA = "11111111-1111-4111-8111-111111111111";
+const ownerB = "22222222-2222-4222-8222-222222222222";
+
+describe("Lite Mode tenant isolation and memory bounds", () => {
+  it("does not let another visitor read a session by ID", () => {
+    const session = store.createSession(ownerA);
+    store.addMessage(ownerA, session.id, "user", "private content");
+    expect(store.getSession(ownerB, session.id)).toBeUndefined();
+  });
+
+  it("keeps uploaded documents private to their visitor", () => {
+    store.addDocument(ownerA, "private.txt", "only owner A", "text/plain", 12);
+    expect(store.getDocuments(ownerB)).toEqual([]);
+    expect(store.getDocuments(ownerA).some((document) => document.title === "private.txt")).toBe(true);
+  });
+
+  it("persists citation excerpts with assistant answers", () => {
+    const session = store.createSession(ownerA);
+    const citation = { documentId: "doc-1", title: "policy.pdf", chunkIndex: 0, score: 0.9, excerpt: "The relevant policy passage." };
+    store.addMessage(ownerA, session.id, "assistant", "See [1].", [citation]);
+    expect(store.getSession(ownerA, session.id)?.messages[0].sources).toEqual([citation]);
+  });
+
+  it("expires inactive owner state after its retention period", () => {
+    vi.useFakeTimers();
+    try {
+      const owner = "idle-owner-test";
+      const session = store.createSession(owner);
+      store.addDocument(owner, "temporary.txt", "temporary data", "text/plain", 14);
+      vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1_000 + 1);
+      expect(store.getSession(owner, session.id)).toBeUndefined();
+      expect(store.getDocuments(owner)).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not allocate owners for read-only lookups", () => {
+    for (let index = 0; index < 2_500; index += 1) {
+      const owner = `read-only-${index}`;
+      expect(store.getSessions(owner)).toEqual([]);
+      expect(store.getDocuments(owner)).toEqual([]);
+      expect(store.getSession(owner, "absent")).toBeUndefined();
+    }
+    const owner = "read-only-created-after-flood";
+    const session = store.createSession(owner);
+    expect(store.getSession(owner, session.id)).toBeDefined();
+  });
+
+  it("refuses new visitors at capacity without deleting earlier visitors' sessions", () => {
+    const firstOwner = "bounded-owner-0";
+    const firstSession = store.createSession(firstOwner);
+    let capacityRejected = false;
+    for (let index = 1; index <= 2_100; index += 1) {
+      try {
+        store.createSession(`bounded-owner-${index}`);
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toMatch(/capacity/);
+        capacityRejected = true;
+        break;
+      }
+    }
+    expect(capacityRejected).toBe(true);
+    expect(store.getSession(firstOwner, firstSession.id)).toBeDefined();
+  });
+});

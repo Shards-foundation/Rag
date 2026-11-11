@@ -7,6 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Local environment secrets and uploaded documents
+.env
+.env.*
+!.env.example
+storage/uploads/
+
+# Generated application and test output
+.next/
+.turbo/
+coverage/
+apps/web/next-env.d.ts
+
 node_modules
 dist
 dist-ssr

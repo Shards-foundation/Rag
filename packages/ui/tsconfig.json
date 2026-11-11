@@ -4,7 +4,9 @@
     "jsx": "react-jsx",
     "module": "esnext",
     "target": "esnext",
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "outDir": "dist",
+    "rootDir": "src"
   },
   "include": ["src"]
 }

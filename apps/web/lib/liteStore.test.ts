@@ -38,10 +38,21 @@ describe("Lite Mode tenant isolation and memory bounds", () => {
     }
   });
 
-  it("evicts the least recently used owner instead of growing its tenant map without limit", () => {
+  it("refuses new visitors at capacity without deleting earlier visitors' sessions", () => {
     const firstOwner = "bounded-owner-0";
     const firstSession = store.createSession(firstOwner);
-    for (let index = 1; index <= 2_100; index += 1) store.createSession(`bounded-owner-${index}`);
-    expect(store.getSession(firstOwner, firstSession.id)).toBeUndefined();
+    let capacityRejected = false;
+    for (let index = 1; index <= 2_100; index += 1) {
+      try {
+        store.createSession(`bounded-owner-${index}`);
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toMatch(/capacity/);
+        capacityRejected = true;
+        break;
+      }
+    }
+    expect(capacityRejected).toBe(true);
+    expect(store.getSession(firstOwner, firstSession.id)).toBeDefined();
   });
 });

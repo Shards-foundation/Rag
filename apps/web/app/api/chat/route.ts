@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   let answer: string;
   if (passages.length === 0) {
     answer = "I couldn't find a matching passage in your Lite Mode documents. Upload a PDF, TXT, or Markdown file, then try again.";
-  } else if (process.env.OPENAI_API_KEY) {
+  } else if (process.env.LITE_MODE_AI_ENABLED === "true" && process.env.OPENAI_API_KEY) {
     try {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const context = passages.map((passage, index) => `[${index + 1}] ${passage.title}\n${passage.content}`).join("\n\n---\n\n");
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "The AI service could not complete this request. Try again or check OPENAI_API_KEY." }, { status: 502 });
     }
   } else {
-    answer = `Search-only Lite Mode (OPENAI_API_KEY is not configured). No AI synthesis was performed.\n\n${passages.map((passage, index) => `[${index + 1}] ${passage.title}\n${passage.content}`).join("\n\n")}`;
+    answer = `Search-only Lite Mode (AI synthesis is disabled or no provider key is configured). No AI synthesis was performed.\n\n${passages.map((passage, index) => `[${index + 1}] ${passage.title}\n${passage.content}`).join("\n\n")}`;
   }
 
   store.addMessage(ownerId, session.id, "assistant", answer, sources);

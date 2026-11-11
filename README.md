@@ -4,7 +4,7 @@
 
 Lumina is a multi-workspace retrieval-augmented generation application. It supports authenticated Clerk users, organization-scoped PDF/TXT/Markdown ingestion, PostgreSQL-backed document chunks and embeddings, Redis/BullMQ indexing, OpenAI-based retrieval and answer generation, persistent chat history, and citations that remain visible after reload.
 
-The repository also includes **Lite Mode** at `/chat`. Lite Mode is useful for evaluating file extraction and retrieval without configuring the backend services. It keeps each browser visitor's sessions and documents separate, but stores them in process memory: data is lost on a server restart and does not replicate across multiple web instances. It is not for sensitive documents or durable production use. Lite Mode AI synthesis is **disabled by default** even when an OpenAI key is configured; explicitly set `LITE_MODE_AI_ENABLED=true` to opt in, and do so only behind trusted rate limits and abuse protection. At shared visitor capacity it refuses new visitors rather than deleting active visitors' data.
+The repository also includes **Lite Mode** at `/chat`. Lite Mode is useful for evaluating file extraction and retrieval without configuring the backend services. It keeps each browser visitor's sessions and documents separate, but stores them in process memory: data is lost on a server restart and does not replicate across multiple web instances. It is not for sensitive documents or durable production use. Lite Mode is **disabled by default in production** unless `LITE_MODE_ENABLED=true` is explicitly set behind trusted edge abuse controls. Lite Mode AI synthesis is **disabled by default** even when an OpenAI key is configured; explicitly set `LITE_MODE_AI_ENABLED=true` to opt in, and do so only behind trusted rate limits and abuse protection. At shared visitor capacity it refuses new visitors rather than deleting active visitors' data.
 
 ## Requirements
 
@@ -39,7 +39,7 @@ Scanned/image-only PDFs and OCR are not supported. Drive and Slack connectors ar
 
 ## Environment
 
-See [.env.example](.env.example) for all variable names and local defaults. `DATABASE_URL`, `REDIS_URL`, `API_PORT`, `WEB_URL`, and `UPLOAD_DIR` are used by the backend. `API_URL` configures the Next.js server-side proxy target. `LITE_MODE_AI_ENABLED` controls optional Lite Mode model spending (default `false`). `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is public by design; `CLERK_SECRET_KEY` and `OPENAI_API_KEY` are secrets and must never be committed.
+See [.env.example](.env.example) for all variable names and local defaults. `DATABASE_URL`, `REDIS_URL`, `API_PORT`, `WEB_URL`, and `UPLOAD_DIR` are used by the backend. `API_URL` configures the Next.js server-side proxy target. `LITE_MODE_ENABLED` controls whether production Lite Mode routes are available; `LITE_MODE_AI_ENABLED` controls optional Lite Mode model spending (default `false`). `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is public by design; `CLERK_SECRET_KEY` and `OPENAI_API_KEY` are secrets and must never be committed.
 
 ## Checks
 

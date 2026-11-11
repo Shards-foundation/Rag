@@ -15,7 +15,11 @@ const { enforceUserRateLimit, closeRateLimiter } = require("../apps/api/dist/rou
 
 async function main() {
   if (process.argv[2] === "single") {
-    await enforceUserRateLimit("chat", process.argv[3]);
+    try {
+      await enforceUserRateLimit("chat", process.argv[3]);
+    } finally {
+      await closeRateLimiter();
+    }
     return;
   }
   const user = `ci-chat-${randomUUID()}`;

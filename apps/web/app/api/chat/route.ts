@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { getLiteOwner, isSameOriginMutation } from "../../../lib/liteIdentity";
+import { getLiteOwner, isLiteModeEnabled, isSameOriginMutation } from "../../../lib/liteIdentity";
 import { store, type LiteCitation } from "../../../lib/liteStore";
 import { retrieveLitePassages } from "../../../lib/liteRetrieval";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
+  if (!isLiteModeEnabled()) return NextResponse.json({ error: "Lite Mode is disabled on this deployment." }, { status: 404 });
   if (!isSameOriginMutation(request)) return NextResponse.json({ error: "Cross-origin request rejected." }, { status: 403 });
   const ownerId = getLiteOwner(request);
   if (!ownerId) return NextResponse.json({ error: "Open Lite Mode before chatting." }, { status: 401 });

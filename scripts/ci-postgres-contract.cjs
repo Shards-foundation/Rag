@@ -7,6 +7,14 @@ const pg = require("pg");
 const action = process.argv[2];
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error("DATABASE_URL is required.");
+if (process.env.GITHUB_ACTIONS !== "true") {
+  throw new Error("Refusing to execute the destructive fixture contract outside isolated CI.");
+}
+const target = new URL(connectionString);
+if (!["127.0.0.1", "localhost"].includes(target.hostname) ||
+    !["/lumina", "/lumina_legacy"].includes(target.pathname)) {
+  throw new Error("Fixture contract requires isolated loopback CI PostgreSQL.");
+}
 
 async function main() {
   const db = new pg.Client({ connectionString });

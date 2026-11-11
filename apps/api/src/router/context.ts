@@ -15,31 +15,33 @@ export type ApiIdentity = { userId: string; clerkUserId: string };
 
 export async function verifyRequestIdentity(authorization: string | undefined): Promise<ApiIdentity | null> {
   if (!authorization) return null;
-  const match = /^Bearer\s+([^\s]+)$/i.exec(authorization.trim());
+  const match = /^Bearer\\s+([^\\s]+)$/i.exec(authorization.trim());
   if (!match || !env.CLERK_SECRET_KEY) return null;
 
+  // Only invalid bearer-token verification fails as unauthenticated. Database or
+  // Clerk user-service outages must propagate as 5xx, not misleading HTTP 401.
+  let clerkUserId: string | undefined;
   try {
     const claims = await verifyToken(match[1], {
       secretKey: env.CLERK_SECRET_KEY,
       authorizedParties: [env.WEB_URL],
     });
-    const clerkUserId = claims?.sub;
-    if (typeof clerkUserId !== "string" || !clerkUserId) return null;
-
-    let user = await getUserByClerkUserId(clerkUserId);
-    if (!user) {
-      const clerkUser = await getClerkClient().users.getUser(clerkUserId);
-      const primaryEmail = clerkUser.emailAddresses.find((email) => email.id === clerkUser.primaryEmailAddressId);
-      if (!primaryEmail?.emailAddress || primaryEmail.verification?.status !== "verified") return null;
-      const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null;
-      user = await upsertUser(clerkUserId, primaryEmail.emailAddress, name);
-    }
-    return { userId: user.id, clerkUserId };
+    clerkUserId = claims?.sub;
   } catch (error) {
-    // Do not log bearer tokens or user profile details.
-    console.warn("Clerk authentication failed", error instanceof Error ? error.name : "unknown error");
+    console.warn("Clerk token verification failed", error instanceof Error ? error.name : "unknown error");
     return null;
   }
+  if (typeof clerkUserId !== "string" || !clerkUserId) return null;
+
+  let user = await getUserByClerkUserId(clerkUserId);
+  if (!user) {
+    const clerkUser = await getClerkClient().users.getUser(clerkUserId);
+    const primaryEmail = clerkUser.emailAddresses.find((email) => email.id === clerkUser.primaryEmailAddressId);
+    if (!primaryEmail?.emailAddress || primaryEmail.verification?.status !== "verified") return null;
+    const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null;
+    user = await upsertUser(clerkUserId, primaryEmail.emailAddress, name);
+  }
+  return { userId: user.id, clerkUserId };
 }
 
 export async function requireOrganizationMembership(userId: string, organizationId: string | undefined) {

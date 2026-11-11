@@ -9,6 +9,7 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./trpc";
+import { enforceUserRateLimit } from "./rateLimit";
 
 const redisUrl = new URL(env.REDIS_URL);
 const ingestionQueue = new Queue("ingestion", {
@@ -72,6 +73,7 @@ export const sourcesRouter = router({
   }),
 
   upload: protectedProcedure.input(uploadInput).mutation(async ({ ctx, input }) => {
+    await enforceUserRateLimit("upload", ctx.userId);
     const safeName = path.basename(input.fileName).replace(/[\u0000-\u001f\\/]/g, "_").trim();
     const extension = safeName.split(".").pop()?.toLowerCase() ?? "";
     const mimeType = supportedTypes[extension];

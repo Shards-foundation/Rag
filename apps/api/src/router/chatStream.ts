@@ -4,6 +4,7 @@ import { embedText, generateAnswerStream, rankChunks } from "@lumina/ai";
 import { env, CONSTANTS } from "@lumina/config";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { requireOrganizationMembership, verifyRequestIdentity } from "./context";
 
 const chatStreamSchema = z.object({
@@ -38,9 +39,14 @@ export async function chatStreamHandler(req: any, reply: any): Promise<void> {
 
   try {
     await requireOrganizationMembership(identity.userId, organizationId);
-  } catch {
-    reply.code(403).send({ error: "You do not have access to this organization." });
-    return;
+  } catch (error) {
+    // An unavailable database is not proof of revoked membership; surface
+    // infrastructure errors as 5xx rather than disguising them as HTTP 403.
+    if (error instanceof TRPCError && error.code === "FORBIDDEN") {
+      reply.code(403).send({ error: "You do not have access to this organization." });
+      return;
+    }
+    throw error;
   }
 
   const { sessionId, message } = parsed.data;
